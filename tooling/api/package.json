@@ -1,8 +1,11 @@
 {
   "name": "@tauri-apps/api",
-  "version": "0.1.0",
+  "version": "1.0.0-beta-rc.1",
   "description": "Tauri API definitions",
   "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": "./dist/index.js",
     "./app": "./dist/app.js",
@@ -81,6 +84,8 @@
     "rollup": "2.44.0",
     "rollup-plugin-terser": "7.0.2",
     "tslib": "2.2.0",
+    "typedoc": "^0.20.35",
+    "typedoc-plugin-markdown": "^3.6.1",
     "typescript": "4.2.4"
   },
   "resolutions": {

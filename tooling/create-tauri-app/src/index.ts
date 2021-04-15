@@ -5,34 +5,47 @@
 import { map, find } from "lodash";
 import { TauriBuildConfig } from "./types/config";
 import { reactjs, reactts } from "./recipes/react";
+import { vuecli } from "./recipes/vue-cli";
 import { vanillajs } from "./recipes/vanilla";
+import { vite } from "./recipes/vite";
 
 export { shell } from "./shell";
-export { install } from "./dependency-manager";
+export { install, checkPackageManager } from "./dependency-manager";
+import { PackageManager } from "./dependency-manager";
 
 export interface Recipe {
   descriptiveName: string;
   shortName: string;
-  configUpdate?: (cfg: TauriBuildConfig) => TauriBuildConfig;
+  configUpdate?: ({
+    cfg,
+    packageManager,
+  }: {
+    cfg: TauriBuildConfig;
+    packageManager: PackageManager;
+  }) => TauriBuildConfig;
   extraNpmDependencies: string[];
   extraNpmDevDependencies: string[];
   preInit?: ({
     cwd,
     cfg,
+    packageManager,
   }: {
     cwd: string;
     cfg: TauriBuildConfig;
+    packageManager: PackageManager;
   }) => Promise<void>;
   postInit?: ({
     cwd,
     cfg,
+    packageManager,
   }: {
     cwd: string;
     cfg: TauriBuildConfig;
+    packageManager: PackageManager;
   }) => Promise<void>;
 }
 
-export const allRecipes: Recipe[] = [vanillajs, reactjs, reactts];
+export const allRecipes: Recipe[] = [vanillajs, reactjs, reactts, vite, vuecli];
 
 export const recipeNames: Array<[string, string]> = map(
   allRecipes,

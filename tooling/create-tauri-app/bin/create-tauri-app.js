@@ -12,9 +12,9 @@ const {
   recipeByDescriptiveName,
   recipeByShortName,
   install,
+  checkPackageManager,
   shell,
 } = require("../dist/");
-const { dir } = require("console");
 
 /**
  * @type {object}
@@ -38,6 +38,7 @@ const createTauriApp = async (cliArgs) => {
       v: "version",
       f: "force",
       l: "log",
+      m: "manager",
       d: "directory",
       b: "binary",
       t: "tauri-path",
@@ -81,13 +82,14 @@ function printUsage() {
     --ci                 Skip prompts
     --force, -f          Force init to overwrite [conf|template|all]
     --log, -l            Logging [boolean]
+    --manager, -d        Set package manager to use [npm|yarn]
     --directory, -d      Set target directory for init
     --binary, -b         Optional path to a tauri binary from which to run init
     --app-name, -A       Name of your Tauri application
     --window-title, -W   Window title of your Tauri application
     --dist-dir, -D       Web assets location, relative to <project-dir>/src-tauri
     --dev-path, -P       Url of your dev server
-    --recipe, -r         Add UI framework recipe. None by default. 
+    --recipe, -r         Add UI framework recipe. None by default.
                          Supported recipes: [${recipeShortNames.join("|")}]
     `);
 }
@@ -128,7 +130,7 @@ const getOptionsInteractive = (argv) => {
         );
         runInit();
       } else {
-        // Something else when wrong
+        // Something else went wrong
         console.error("An unknown error occurred:", error);
       }
     });
@@ -142,6 +144,8 @@ async function runInit(argv, config = {}) {
       window: { title },
     },
   } = config;
+  // this little fun snippet pulled from vite determines the package manager the script was run from
+  const packageManager = /yarn/.test(process.env.npm_execpath) ? "yarn" : "npm";
 
   let recipe;
 
@@ -157,7 +161,7 @@ async function runInit(argv, config = {}) {
   };
 
   if (recipe !== undefined) {
-    buildConfig = recipe.configUpdate(buildConfig);
+    buildConfig = recipe.configUpdate({ buildConfig, packageManager });
   }
 
   const directory = argv.d || process.cwd();
@@ -166,14 +170,18 @@ async function runInit(argv, config = {}) {
     appName: appName || argv.A,
     windowTitle: title || argv.w,
   };
+
   // note that our app directory is reliant on the appName and
   // generally there are issues if the path has spaces (see Windows)
   // future TODO prevent app names with spaces or escape here?
   const appDirectory = join(directory, cfg.appName);
 
+  // this throws an error if we can't run the package manager they requested
+  await checkPackageManager({ cwd: directory, packageManager });
+
   if (recipe.preInit) {
     console.log("===== running initial command(s) =====");
-    await recipe.preInit({ cwd: directory, cfg });
+    await recipe.preInit({ cwd: directory, cfg, packageManager });
   }
 
   const initArgs = [
@@ -183,35 +191,42 @@ async function runInit(argv, config = {}) {
     ["--dev-path", cfg.devPath],
   ].reduce((final, argSet) => {
     if (argSet[1]) {
-      return final.concat([argSet[0], `\"${argSet[1]}\"`]);
+      return final.concat(argSet);
     } else {
       return final;
     }
   }, []);
 
-  const installed = await install({
-    appDir: appDirectory,
-    dependencies: recipe.extraNpmDependencies,
-    devDependencies: ["tauri", ...recipe.extraNpmDevDependencies],
-  });
+  // Vue CLI plugin automatically runs these
+  if (recipe.shortName !== "vuecli") {
+    console.log("===== installing any additional needed deps =====");
+    await install({
+      appDir: appDirectory,
+      dependencies: recipe.extraNpmDependencies,
+      devDependencies: ["@tauri-apps/cli", ...recipe.extraNpmDevDependencies],
+      packageManager,
+    });
 
-  console.log("===== running tauri init =====");
-  const binary = !argv.b
-    ? installed.packageManager
-    : resolve(appDirectory, argv.b);
-  const runTauriArgs =
-    installed.packageManager === "npm" && !argv.b
-      ? ["run", "tauri", "--", "init"]
-      : ["tauri", "init"];
-  await shell(binary, [...runTauriArgs, ...initArgs], {
-    cwd: appDirectory,
-  });
+    console.log("===== running tauri init =====");
+    await shell("npm", ["set-script", "tauri", "tauri"], {
+      cwd: appDirectory,
+    });
+    const binary = !argv.b ? packageManager : resolve(appDirectory, argv.b);
+    const runTauriArgs =
+      packageManager === "npm" && !argv.b
+        ? ["run", "tauri", "--", "init"]
+        : ["tauri", "init"];
+    await shell(binary, [...runTauriArgs, ...initArgs], {
+      cwd: appDirectory,
+    });
+  }
 
   if (recipe.postInit) {
     console.log("===== running final command(s) =====");
     await recipe.postInit({
       cwd: appDirectory,
       cfg,
+      packageManager,
     });
   }
 }

@@ -20,7 +20,9 @@ function runBuildTest(args) {
         setTimeout(resolve, 2000)
       })
       process.chdir(appDir)
-      await build(args).promise
+      console.log(server)
+      const { promise } = await build(args)
+      await promise
 
       const artifactFolder = args.debug ? 'debug' : 'release'
       const artifactPath = path.resolve(

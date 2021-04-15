@@ -1,6 +1,6 @@
 {
   "name": "create-tauri-app",
-  "version": "0.0.0",
+  "version": "1.0.0-beta-rc.1",
   "description": "Jump right into a Tauri App!",
   "bin": {
     "create-tauri-app": "./bin/create-tauri-app.js"
@@ -14,6 +14,12 @@
   "contributors": [
     "Tauri Team <team@tauri-apps.org> (https://tauri.studio)",
     "Jacob Bolda <me@jacobbolda.com> (https://www.jacobbolda.com)"
+  ],
+  "main": "bin/create-tauri-app.js",
+  "files": [
+    "bin",
+    "dist",
+    "src/templates"
   ],
   "scripts": {
     "create-tauri-app": "create-tauri-app",
